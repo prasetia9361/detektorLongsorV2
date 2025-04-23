@@ -12,7 +12,7 @@ transmitter::transmitter(){
 }
 
 void transmitter::init(){
-  if(esp_task_wdt_init(10, true) != ESP_OK) {
+  if(esp_task_wdt_init(20, true) != ESP_OK) {
     Serial.println("Gagal inisialisasi WDT!");
     while(1);
   }
@@ -48,22 +48,23 @@ void transmitter::init(){
   comEspnow->addPeer();
 }
 
-void transmitter::processBinding(){
-  esp_task_wdt_reset(); 
-  // proses binding alamat jika tombol ditekan dua kali
-  if (mButton->getMode())
-  {
-      comEspnow->statusBinding();
-      mButton->setMode(false);
-  }
+// void transmitter::processBinding(){
+//   // proses binding alamat jika tombol ditekan dua kali
+//   if (mButton->getMode())
+//   {
+//       Serial.println("Mengirim pesan binding...");
+//       comEspnow->statusBinding();
+//       mButton->setMode(false);
+//       Serial.println("Selesai mengirim pesan binding");
+//   }
   
-  //Proses penghapusan alamat jika tombol long-press ditekan
-  if (mButton->getRemove()) 
-  {
-      memory->deleteAddress(); 
-      mButton->setRemove(false); 
-  }
-}
+//   //Proses penghapusan alamat jika tombol long-press ditekan
+//   if (mButton->getRemove()) 
+//   {
+//       memory->deleteAddress(); 
+//       mButton->setRemove(false); 
+//   }
+// }
 
 void transmitter::readSensor(bool sireneState, unsigned long sirenePreviousMillis){
     // Read soil moisture
@@ -77,7 +78,8 @@ void transmitter::readSensor(bool sireneState, unsigned long sirenePreviousMilli
     float y = accel.acceleration.y;
     float z = accel.acceleration.z;
     int angle = (atan2(sqrt(x*x + y*y), z) * 180.0) / PI;
-
+    // Serial.println(moisture);
+    // Serial.println(angle);
     // Update shared variables with mutex
     if(xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE) {
       soilMoisture = moisture;
@@ -123,9 +125,12 @@ void transmitter::readSensor(bool sireneState, unsigned long sirenePreviousMilli
       xSemaphoreGive(stringMutex);
     }
     mButton->tick();
+    esp_task_wdt_reset(); 
 }
 
 void transmitter::sendData(){
+    
+    
     int moisture, angle;
     char level[8];
     
@@ -142,6 +147,9 @@ void transmitter::sendData(){
         xSemaphoreGive(stringMutex);
     }
 
+    // Serial.println(moisture);
+    // Serial.println(angle);
+
     static unsigned long lastSendTime = 0;
     unsigned long currentTime = millis();
     
@@ -149,7 +157,7 @@ void transmitter::sendData(){
     // if (currentTime - lastSendTime >= 5000) {
     
     comEspnow->sendData(moisture, angle, level);
-        
+    esp_task_wdt_reset();
         // Perbarui waktu pengiriman terakhir
     //     lastSendTime = currentTime;
     // }
@@ -157,6 +165,7 @@ void transmitter::sendData(){
 
 void transmitter::wdtReset(){
     if(esp_task_wdt_add(NULL) != ESP_OK) {
-        Serial.println("Gagal daftarkan Core1 ke WDT!");
+        Serial.println("Gagal daftarkan task ke WDT!");
     }
+    esp_task_wdt_reset();
 }

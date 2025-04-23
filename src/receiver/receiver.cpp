@@ -25,8 +25,9 @@ void receiver::init(){
         Serial.println("Gagal inisialisasi WDT!");
         while(1);
     }
-
+    mButton->begin(); 
     memory->init();
+    memory->readWifi();
     ssid = memory->getSsid();
     pass = memory->getPass();
     
@@ -63,10 +64,13 @@ void receiver::init(){
     
     server->notFound();
     server->init();
-    
+}
+
+void receiver::beginEspNowandLcd(){
     if (!comm->begin()) {
         Serial.println("Komunikasi gagal dimulai!");
     }
+    
 
     // Initialize LCD
     lcd.init();
@@ -79,7 +83,29 @@ void receiver::init(){
 
 void receiver::processBinding(){
     esp_task_wdt_reset(); 
+    // Serial.println(mButton->getMode());
+    // proses binding alamat jika tombol ditekan dua kali
+    if (mButton->getMode()) {
+        Serial.println("Mengirim pesan binding dari receiver...");
+        comm->statusBinding();
+        mButton->setMode(false);
+        Serial.println("Selesai mengirim pesan binding dari receiver");
+    }
     
+    // Proses penghapusan alamat jika tombol long-press ditekan
+    if (mButton->getRemove()) {
+        Serial.println("deleteMode");
+        memory->deleteAddress(); 
+        mButton->setRemove(false); 
+    }
+
+    mButton->tick();
+
+}
+
+
+void receiver::kredensialWifi(){
+    esp_task_wdt_reset(); 
     // Cek apakah ada informasi WiFi baru dari server
     if (server->getConneect()) {
         ssid = memory->getSsid();
@@ -119,18 +145,6 @@ void receiver::processBinding(){
             server->setup();
         }
     }
-    
-    // proses binding alamat jika tombol ditekan dua kali
-    if (mButton->getMode()) {
-        comm->statusBinding();
-        mButton->setMode(false);
-    }
-    
-    // Proses penghapusan alamat jika tombol long-press ditekan
-    if (mButton->getRemove()) {
-        memory->deleteAddress(); 
-        mButton->setRemove(false); 
-    }
 }
 
 void receiver::publishData(){
@@ -140,6 +154,36 @@ void receiver::publishData(){
     // char level[8];
     // strncpy(level, (const char*)comm->getLevel(), sizeof(level));
     // Update LCD
+    // lcd.clear();
+    // lcd.setCursor(0, 0);
+    // lcd.print("Status: ");
+    // lcd.print(comm->getLevel());
+    
+    // lcd.setCursor(0, 1);
+    // lcd.print("Tanah:");
+    // lcd.print(moisture);
+    // lcd.print("% ");
+    
+    // lcd.setCursor(10, 1);
+    // lcd.print(angle);
+    // lcd.print((char)223);
+    Serial.println(moisture);
+    Serial.println(angle);
+    Serial.println(comm->getLevel());
+
+    // Publish data with MQTT mutex
+    if(xSemaphoreTake(mqttMutex, portMAX_DELAY) == pdTRUE) {
+      mqttClient.publish(MQTT_TOPIC_PREFIX + "/soil", String(moisture));
+      mqttClient.publish(MQTT_TOPIC_PREFIX + "/mpu", String(angle));
+      mqttClient.publish(MQTT_TOPIC_PREFIX + "/level", String(comm->getLevel()));
+      xSemaphoreGive(mqttMutex);
+    }
+    
+}
+
+void receiver::printLcd(){
+    int moisture = comm->getSoil();
+    int angle = comm->getAngle();
     lcd.clear();
     lcd.setCursor(0, 0);
     lcd.print("Status: ");
@@ -153,15 +197,6 @@ void receiver::publishData(){
     lcd.setCursor(10, 1);
     lcd.print(angle);
     lcd.print((char)223);
-
-    // Publish data with MQTT mutex
-    if(xSemaphoreTake(mqttMutex, portMAX_DELAY) == pdTRUE) {
-      mqttClient.publish(MQTT_TOPIC_PREFIX + "/soil", String(moisture));
-      mqttClient.publish(MQTT_TOPIC_PREFIX + "/mpu", String(angle));
-      mqttClient.publish(MQTT_TOPIC_PREFIX + "/level", String(comm->getLevel()));
-      xSemaphoreGive(mqttMutex);
-    }
-    mButton->tick();
 }
 
 void receiver::mqttLoop(){

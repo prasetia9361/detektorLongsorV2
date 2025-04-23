@@ -40,8 +40,9 @@ void Core0TaskCode(void *param){
     bool sireneState = false;
     unsigned long sirenePreviousMillis = 0;
     for (;;){
-        trans->processBinding();
+        // trans->processBinding();
         trans->readSensor(sireneState,sirenePreviousMillis);
+        // trans->wdtReset();
         vTaskDelay(pdMS_TO_TICKS(100));
     }
 
@@ -51,7 +52,8 @@ void Core1TaskCode(void *param){
     for (;;)
     {
         trans->sendData();
-        vTaskDelay(pdMS_TO_TICKS(100));
+        // trans->wdtReset();
+        vTaskDelay(pdMS_TO_TICKS(50));
     }
     
 }
@@ -59,6 +61,7 @@ void Core1TaskCode(void *param){
 #include "receiver/receiver.h"
 receiver *reciev;
 void applicationTask(void *param);
+void buttonTask(void *param);
 
 void setup(){
     Serial.begin(115200);
@@ -66,19 +69,52 @@ void setup(){
     reciev->init();
 
     TaskHandle_t taskHandler;
-    xTaskCreate(applicationTask, "applicationTask", 10192, NULL, 2, &taskHandler);
+    // TaskHandle_t taskButton;
+    // xTaskCreate(applicationTask, "applicationTask", 10192, NULL, 1, &taskHandler);
+    TaskHandle_t Core0Task;
+    // Create tasks
+    xTaskCreatePinnedToCore(
+        buttonTask,   // Task function
+        "buttonTask",     // Task name
+        10000,           // Stack size
+        NULL,            // Parameters
+        1,               // Priority
+        &Core0Task,      // Task handle
+        0                // Core 0
+    );
+
+    xTaskCreatePinnedToCore(
+        applicationTask,   // Task function
+        "applicationTask",     // Task name
+        10000,           // Stack size
+        NULL,            // Parameters
+        1,               // Priority
+        &taskHandler,            // Task handle
+        1                // Core 1
+    );
+    // xTaskCreate(buttonTask, "buttonTask", 10000, NULL, 2, &taskButton);
 }
 void loop(){
     reciev->mqttLoop();
 }
 void applicationTask(void *param){
     reciev->wdtReset();
-    bool sireneState = false;
-    unsigned long sirenePreviousMillis = 0;
     for (;;){
-        reciev->processBinding();
+        reciev->kredensialWifi();
         reciev->publishData();
         vTaskDelay(pdMS_TO_TICKS(2000));
     }
+}
+
+void buttonTask(void *param){
+    reciev->wdtReset();
+    reciev->beginEspNowandLcd();
+    for (;;)
+    {
+        reciev->printLcd();
+        reciev->processBinding();
+    }
+    vTaskDelay(pdMS_TO_TICKS(10));
+    
 }
 #endif

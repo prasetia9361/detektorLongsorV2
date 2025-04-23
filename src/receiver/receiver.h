@@ -1,5 +1,6 @@
 #pragma once 
 #include <Arduino.h>
+#include <driver/gpio.h>
 #include <MQTT.h>
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
@@ -38,8 +39,11 @@ public:
     receiver();
     void init();
     void processBinding();
+    void beginEspNowandLcd();
+    void kredensialWifi();
     void publishData();
     void mqttLoop();
+    void printLcd();
     void wdtReset();
     friend void mqttCallback(String &topic, String &payload);
 };

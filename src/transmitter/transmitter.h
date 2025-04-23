@@ -1,5 +1,6 @@
 #pragma once
 #include <Arduino.h>
+#include <driver/gpio.h>
 #include <WiFi.h>
 #include <Wire.h>
 #include <Adafruit_MPU6050.h>

@@ -33,6 +33,7 @@ public:
     uint8_t *getMac(){return configData.macAddress;}
     uint8_t *getMac1(){return configData.macAddress1;}
 
+    void readWifi();
     String getSsid() { return setWifi.ssid; }
     String getPass() {return setWifi.pass;}
 

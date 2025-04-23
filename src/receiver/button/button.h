@@ -6,8 +6,8 @@
 class button
 {
 private:
-    bool mode;
-    bool removeData;
+    bool mode = false;
+    bool removeData = false;
     int _pin;
     OneButton bindingButton;
     static button* instance;
@@ -15,8 +15,8 @@ private:
     static void longPress();
 public:
     button(int pin):_pin(pin),bindingButton(_pin, true){
-        mode = false;
-        removeData = false;
+        // mode = false;
+        // removeData = false;
         instance = this;
     }
     void begin();

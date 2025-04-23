@@ -10,14 +10,47 @@ static commEspNow* instance = NULL;
 
 // Callback untuk receiver
 void receiverCallback(const uint8_t* macAddr, const uint8_t* data, int dataLen) {
+    // Serial.print("Pesan diterima, panjang: ");
+    // Serial.println(dataLen);
+    // Serial.print("Data: ");
+    // for (int i = 0; i < dataLen; i++) {
+    //     Serial.print((char)data[i]);
+    // }
+    // Serial.println();
+    
+#ifdef RECEIVER
     if (strcmp((char*)data, "bindingSend") == 0) {
+        Serial.println("Menerima pesan binding dari transmitter");
+        Serial.print("MAC Address: ");
+        for (int i = 0; i < 6; i++) {
+            Serial.print(macAddr[i], HEX);
+            if (i < 5) Serial.print(":");
+        }
+        Serial.println();
         instance->memoryStorage->writeMacAddress(macAddr, 1);
-    }else if (strcmp((char*)data, "bindingMode") == 0){
+        Serial.println("Alamat MAC transmitter berhasil disimpan");
+    }
+#endif
+#ifdef TRANSMITTER
+    if (strcmp((char*)data, "bindingMode") == 0){
+        Serial.println("Menerima pesan binding dari receiver");
+        Serial.print("MAC Address: ");
+        for (int i = 0; i < 6; i++) {
+            Serial.print(macAddr[i], HEX);
+            if (i < 5) Serial.print(":");
+        }
+        Serial.println();
         instance->memoryStorage->writeMacAddress(macAddr, 1);
         memcpy(instance->dataFromReceiver, data, dataLen);
-    }else {
+        Serial.println("Alamat MAC receiver berhasil disimpan");
+    }
+#endif
+    else {
         if (memcmp(macAddr, instance->memoryStorage->getMac(), 6) == 0) {
             memcpy(&instance->messageData, data, sizeof(instance->messageData));
+            
+            // Konversi char array ke String
+            instance->level = String(instance->messageData.data);
         }
     }
 }
@@ -58,6 +91,7 @@ bool commEspNow::begin() {
 
 void commEspNow::addPeer() {
     if (memoryStorage->getMac()[0] == 0) {
+        Serial.println("macAddress nill");
         return;
     }
 
@@ -75,6 +109,7 @@ void commEspNow::addPeer() {
 
 void commEspNow::sendData(int soil, int angle, const char* level) {
     if (memoryStorage->getMac()[0] == 0) {
+        // Serial.println("mac address nill");
         return;
     }
 
@@ -83,6 +118,7 @@ void commEspNow::sendData(int soil, int angle, const char* level) {
     messageData.data[sizeof(messageData.data) - 1] = '\0'; // Pastikan null-terminated
     messageData.soil = soil;
     messageData.angle = angle;
+    Serial.println("sending data");
 
     esp_now_send(memoryStorage->getMac(), (uint8_t*)&messageData, sizeof(messageData));
 }
@@ -99,9 +135,21 @@ void commEspNow::statusBinding() {
         peerInfo.peer_addr[i] = 0xFF;
     }
 
+    Serial.println("Memulai binding mode dengan broadcast address");
     if (esp_now_add_peer(&peerInfo) == ESP_OK) {
+        Serial.print("Mengirim pesan binding: ");
         Serial.println(messaging);
-        esp_now_send(peerInfo.peer_addr, (uint8_t*)messaging, 12);
+        
+        esp_err_t result = esp_now_send(peerInfo.peer_addr, (uint8_t*)messaging, 12);
+        if (result == ESP_OK) {
+            Serial.println("Pesan binding berhasil dikirim");
+        } else {
+            Serial.print("Gagal mengirim pesan binding: ");
+            Serial.println(esp_err_to_name(result));
+        }
+        
         esp_now_del_peer(peerInfo.peer_addr);
+    } else {
+        Serial.println("Gagal menambahkan peer broadcast");
     }
 }

@@ -20,6 +20,7 @@ private:
 
     storage* memoryStorage;
     uint8_t wifiChannel;
+    String level = "";
     int bufferSize;
     int index;
     int headerSize;
@@ -38,7 +39,7 @@ public:
     void statusBinding();
     bool getBinding() { return stateBinding; }
 
-    char getLevel(){return messageData.data[8];}
+    String getLevel(){return level;}
     int getSoil(){return messageData.soil;}
     int getAngle(){return messageData.angle;}
     
