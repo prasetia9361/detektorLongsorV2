@@ -32,7 +32,7 @@ void transmitter::init(){
   mqttMutex = xSemaphoreCreateMutex();
   stringMutex = xSemaphoreCreateMutex();
 
-  pinMode(LED_RED, OUTPUT);
+  // pinMode(LED_RED, OUTPUT);
   pinMode(LED_YELLOW, OUTPUT);
   pinMode(LED_GREEN, OUTPUT);
   pinMode(SIRENE_PIN, OUTPUT);
@@ -48,28 +48,29 @@ void transmitter::init(){
   comEspnow->addPeer();
 }
 
-// void transmitter::processBinding(){
-//   // proses binding alamat jika tombol ditekan dua kali
-//   if (mButton->getMode())
-//   {
-//       Serial.println("Mengirim pesan binding...");
-//       comEspnow->statusBinding();
-//       mButton->setMode(false);
-//       Serial.println("Selesai mengirim pesan binding");
-//   }
+void transmitter::processBinding(){
+  // proses binding alamat jika tombol ditekan dua kali
+  if (mButton->getMode())
+  {
+      Serial.println("Mengirim pesan binding...");
+      comEspnow->statusBinding();
+      mButton->setMode(false);
+      Serial.println("Selesai mengirim pesan binding");
+  }
   
-//   //Proses penghapusan alamat jika tombol long-press ditekan
-//   if (mButton->getRemove()) 
-//   {
-//       memory->deleteAddress(); 
-//       mButton->setRemove(false); 
-//   }
-// }
+  //Proses penghapusan alamat jika tombol long-press ditekan
+  if (mButton->getRemove()) 
+  {
+      memory->deleteAddress(); 
+      mButton->setRemove(false); 
+  }
+}
 
 void transmitter::readSensor(bool sireneState, unsigned long sirenePreviousMillis){
     // Read soil moisture
     int rawValue = analogRead(SOIL_PIN);
-    int moisture = map(rawValue, 1024, 454, 0, 100);
+    int moisture = map(rawValue, 2250, 750, 0, 100);
+    moisture = constrain(moisture, 0, 100);
 
     // Read MPU6050
     sensors_event_t accel;
@@ -79,7 +80,7 @@ void transmitter::readSensor(bool sireneState, unsigned long sirenePreviousMilli
     float z = accel.acceleration.z;
     int angle = (atan2(sqrt(x*x + y*y), z) * 180.0) / PI;
     // Serial.println(moisture);
-    // Serial.println(angle);
+    Serial.println(angle);
     // Update shared variables with mutex
     if(xSemaphoreTake(xMutex, portMAX_DELAY) == pdTRUE) {
       soilMoisture = moisture;
@@ -91,7 +92,6 @@ void transmitter::readSensor(bool sireneState, unsigned long sirenePreviousMilli
     const char* newAlertLevel;
     if (moisture >= 80 || angle > 30) {
       newAlertLevel = "BAHAYA";
-      digitalWrite(LED_RED, HIGH);
       digitalWrite(LED_YELLOW, LOW);
       digitalWrite(LED_GREEN, LOW);
       
@@ -99,6 +99,7 @@ void transmitter::readSensor(bool sireneState, unsigned long sirenePreviousMilli
       unsigned long currentMillis = millis();
       if (currentMillis - sirenePreviousMillis >= 1000) {
         sireneState = !sireneState;
+        // digitalWrite(LED_RED, sireneState);
         digitalWrite(SIRENE_PIN, sireneState);
         sirenePreviousMillis = currentMillis;
       }
@@ -106,14 +107,14 @@ void transmitter::readSensor(bool sireneState, unsigned long sirenePreviousMilli
     else if ((moisture >= 50 && moisture < 80) || (angle > 15 && angle <= 30)) {
       newAlertLevel = "WASPADA";
       digitalWrite(LED_YELLOW, HIGH);
-      digitalWrite(LED_RED, LOW);
+      // digitalWrite(LED_RED, LOW);
       digitalWrite(LED_GREEN, LOW);
       digitalWrite(SIRENE_PIN, LOW);
     }
     else {
       newAlertLevel = "AMAN";
       digitalWrite(LED_GREEN, HIGH);
-      digitalWrite(LED_RED, LOW);
+      // digitalWrite(LED_RED, LOW);
       digitalWrite(LED_YELLOW, LOW);
       digitalWrite(SIRENE_PIN, LOW);
     }
@@ -124,7 +125,6 @@ void transmitter::readSensor(bool sireneState, unsigned long sirenePreviousMilli
       alertLevel[sizeof(alertLevel)-1] = '\0';
       xSemaphoreGive(stringMutex);
     }
-    mButton->tick();
     esp_task_wdt_reset(); 
 }
 
@@ -157,6 +157,7 @@ void transmitter::sendData(){
     // if (currentTime - lastSendTime >= 5000) {
     
     comEspnow->sendData(moisture, angle, level);
+    mButton->tick();
     esp_task_wdt_reset();
         // Perbarui waktu pengiriman terakhir
     //     lastSendTime = currentTime;

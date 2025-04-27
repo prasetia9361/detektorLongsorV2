@@ -40,7 +40,6 @@ void Core0TaskCode(void *param){
     bool sireneState = false;
     unsigned long sirenePreviousMillis = 0;
     for (;;){
-        // trans->processBinding();
         trans->readSensor(sireneState,sirenePreviousMillis);
         // trans->wdtReset();
         vTaskDelay(pdMS_TO_TICKS(100));
@@ -51,6 +50,7 @@ void Core1TaskCode(void *param){
     trans->wdtReset();
     for (;;)
     {
+        trans->processBinding();
         trans->sendData();
         // trans->wdtReset();
         vTaskDelay(pdMS_TO_TICKS(50));

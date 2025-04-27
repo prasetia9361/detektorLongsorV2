@@ -20,7 +20,7 @@ private:
 
     storage* memoryStorage;
     uint8_t wifiChannel;
-    String level = "";
+    String level = "-";
     int bufferSize;
     int index;
     int headerSize;

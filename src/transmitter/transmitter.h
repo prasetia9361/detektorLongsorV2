@@ -14,10 +14,10 @@
 
 // Pin Definitions
 #define SOIL_PIN        36
-#define LED_RED         5
-#define LED_YELLOW      16
-#define LED_GREEN       17
-#define SIRENE_PIN      18
+// #define LED_RED         14//5
+#define LED_YELLOW      23//16
+#define LED_GREEN       32//17
+#define SIRENE_PIN      14//18
 #define I2C_SDA         21
 #define I2C_SCL         22
 #define BINDING_BUTTON GPIO_NUM_0
